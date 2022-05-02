@@ -1,48 +1,51 @@
+from re import template
+from flask import *
+from flask_bootstrap import Bootstrap
 import os
-import urllib.request
-from flask import Flask, flash, request, redirect, url_for
+from flask_pymongo import PyMongo
 from werkzeug.utils import secure_filename
 
-UPLOAD_FOLDER = 'uploads/static'
+
+app = Flask(__name__,
+            static_url_path="",
+            static_folder="static",
+            template_folder="templates")
+Bootstrap(app)
+app.config["SECRET_KEY"] = "SECRET_KEY"
+app.config["UPLOAD_FOLDER"] = "static/uploads/"
+app.config["MONGO_DBNAME"] = "gallery"
+app.config["MONGO_URI"] = "mongodb://localhost:27017/gallery"
+
+mongo = PyMongo(app)
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-
-
-def allowed_file(filename): return '.' in filename and filename.rsplit(
-    '.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
+#app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 @app.route("/")
-def upload_file():
-    if request.method == 'POST':
-        # check if the post request has the file part
-        if 'file' not in request.files:
-            flash('No file part')
-            return redirect(request.url)
-        file = request.files['file']
-        # if user does not select file, browser also
-        # submit a empty part without filename
-        if file.filename == '':
-            flash('No selected file')
-            return redirect(request.url)
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            flash('Uploaded file successfully')
-            return render_template('index.html')
-        else:
-            flash('Invalid image type')
-            return redirect(request.url)
+def index():
+    return render_template('index.html')
 
 
-@app.route('display/<filename>')
-def display_image(filename):
-    return redirect(url_for('static', filename='uploads/' + filename), code=301)
+@app.route('/gallery/')
+def gallery():
+    flaskfolder = os.getcwd()
+    uploadsfolder = os.path.join(flaskfolder, 'static', 'uploads')
+    uploads = os.listdir(uploadsfolder)
+    print(uploads)
+    return render_template('gallery.html', uploads=uploads)
+
+
+@app.route("/upload/", methods=["GET", "POST"])
+def upload():
+    if request.method == "POST":
+        global img
+        img = request.files.get("image")
+        filename = secure_filename(img.filename)
+        img.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+        return redirect(url_for("upload"))
+    return render_template("upload.html")
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host="0.0.0.0", port=5000)
