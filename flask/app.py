@@ -15,7 +15,7 @@ app = Flask(__name__,
             template_folder="templates")
 Bootstrap(app)
 flaskfolder = os.getcwd()
-uploadsfolder = os.path.join(flaskfolder, 'static', 'uploads')
+uploadsfolder = os.path.join(flaskfolder, 'mysite', 'static', 'uploads')
 app.config["UPLOAD_FOLDER"] = uploadsfolder
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
 
@@ -37,6 +37,7 @@ def gallery():
 def upload():
     if request.method == "POST":
         global img
+        global r_state
         img = request.files.get("image")
         names = secure_filename(img.filename).split(".")
         now = datetime.now()
@@ -47,27 +48,20 @@ def upload():
             app.config["UPLOAD_FOLDER"], filename))  # open image
         ripeness_state, total_area, p_img = detect_ripeness(
             cvimg)  # analyze image
+        if (ripeness_state == 0):
+            r_state = "Ripe"
+        elif (ripeness_state == 1):
+            r_state = "Semi-Ripe"
+        elif (ripeness_state == 2):
+            r_state = "Unripe"
+        elif (ripeness_state == 3):
+            r_state = "None"
         p_img = cvtColor(p_img, COLOR_BGR2RGB)  # fix colorspace
         newname = "Rip" + names[0] + "." + names[1]
         imwrite(os.path.join(
             app.config["UPLOAD_FOLDER"], newname), p_img)
         return ("OKeee bee")
     return render_template("upload.html")
-
-
-@ app.route("/res")
-def analyze_img():
-    if img:
-        imgname = secure_filename(img.filename)
-        cvimg = imread(imgname)  # open image
-        ripeness_state, total_area, p_img = detect_ripeness(
-            cvimg)  # analyze image
-        p_img = cvtColor(p_img, COLOR_BGR2RGB)  # fix colorspace
-        imwrite(imgname, p_img)  # save analyzed image
-        # sorry for the long line
-        return(f'results:<br>ripeness state: {ripeness_state}<br>total area: {total_area}<br>analyzed image:<br><img src={imgname}><br>original image:<br><img src={imgname}>')
-    else:
-        return("aint nothin yet")
 
 
 if __name__ == '__main__':
